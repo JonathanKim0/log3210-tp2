@@ -101,7 +101,8 @@ public class SemantiqueVisitor implements ParserVisitor {
             } else if (!SymbolTable.containsKey(type) || SymbolTable.get(type).equals(VarType.EnumValue)) {
                 throw new SemantiqueError(String.format("Identifier %s has been declared with the type %s that does not exist", varName, type));
             } else {
-                SymbolTable.put(type, VarType.EnumVar);
+                SymbolTable.put(varName, VarType.EnumVar);
+                System.out.println(SymbolTable);
             }
         }
         return null;
@@ -174,8 +175,9 @@ public class SemantiqueVisitor implements ParserVisitor {
         if (node.jjtGetNumChildren() > 1) {
             node.jjtGetChild(1).jjtAccept(this, d);
             if (d.type != SymbolTable.get(varName)) {
-                System.out.println(SymbolTable.get(varName));
-                throw new SemantiqueError(String.format("Invalid type in assignation of Identifier %s", varName));
+                if (!(d.type.equals(VarType.EnumValue) && SymbolTable.get(varName).equals(VarType.EnumVar) && SymbolTable.containsKey(varName))) {
+                    throw new SemantiqueError(String.format("Invalid type in assignation of Identifier %s", varName));
+                }
             }
         }
         return null;
@@ -189,7 +191,6 @@ public class SemantiqueVisitor implements ParserVisitor {
             throw new SemantiqueError(String.format("Identifier %s has multiple declarations.", varName));
         }
         SymbolTable.put(varName, VarType.EnumType);
-        ArrayList<String> identifiersToRemove = new ArrayList<>();
         int numChildren = node.jjtGetNumChildren();
         for(int i = 1; i < numChildren; i++) {
             this.ENUM_VALUES++;
@@ -198,7 +199,6 @@ public class SemantiqueVisitor implements ParserVisitor {
                 throw new SemantiqueError(String.format("Identifier %s has multiple declarations.", varName));
             }
             SymbolTable.put(varName, VarType.EnumValue);
-            identifiersToRemove.add(varName);
         }
         return null;
     }
