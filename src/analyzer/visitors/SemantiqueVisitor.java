@@ -171,6 +171,14 @@ public class SemantiqueVisitor implements ParserVisitor {
     @Override
     public Object visit(ASTEnumStmt node, Object data) {
         // TODO
+        int numChildren = node.jjtGetNumChildren();
+        for(int i = 1; i < numChildren; i++) {
+            this.ENUM_VALUES++;
+            DataStruct d = callChildenCond(node, i);
+            node.jjtGetChild(i).jjtAccept(this, d);
+            System.out.println(ENUM_VALUES);
+        }
+        ((DataStruct) data).type = VarType.EnumType;
         return null;
     }
 
