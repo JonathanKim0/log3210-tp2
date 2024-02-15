@@ -87,22 +87,21 @@ public class SemantiqueVisitor implements ParserVisitor {
     public Object visit(ASTDeclaration node, Object data) {
         //TODO
         this.VAR++;
-        String varName = ((ASTIdentifier) node.jjtGetChild(0)).getValue();
+        int numChildren = node.jjtGetNumChildren();
+        String varName = ((ASTIdentifier) node.jjtGetChild(numChildren - 1)).getValue();
         if (SymbolTable.containsKey(varName)) {
             throw new SemantiqueError(String.format("Identifier %s has multiple declarations.", varName));
         }
-        String type = node.getValue();
-        System.out.println(String.format("type: %s, %s", type, varName));
+        String type = numChildren == 1 ? node.getValue() : ((ASTIdentifier) node.jjtGetChild(0)).getValue();
         if(type != null) {
             if(type.equals("num")) {
                 SymbolTable.put(varName, VarType.Number);
             } else if(type.equals("bool")) {
                 SymbolTable.put(varName, VarType.Bool);
-            }
-            else if(type.equals("enum")) {
-                SymbolTable.put(varName, VarType.EnumType);
-            } else {
+            } else if (!SymbolTable.containsKey(type) || SymbolTable.get(type).equals(VarType.EnumValue)) {
                 throw new SemantiqueError(String.format("Identifier %s has been declared with the type %s that does not exist", varName, type));
+            } else {
+                SymbolTable.put(type, VarType.EnumVar);
             }
         }
         return null;
@@ -174,8 +173,8 @@ public class SemantiqueVisitor implements ParserVisitor {
 
         if (node.jjtGetNumChildren() > 1) {
             node.jjtGetChild(1).jjtAccept(this, d);
-            System.out.println(d.type);
             if (d.type != SymbolTable.get(varName)) {
+                System.out.println(SymbolTable.get(varName));
                 throw new SemantiqueError(String.format("Invalid type in assignation of Identifier %s", varName));
             }
         }
@@ -185,19 +184,21 @@ public class SemantiqueVisitor implements ParserVisitor {
     @Override
     public Object visit(ASTEnumStmt node, Object data) {
         // TODO
+        String varName = ((ASTIdentifier) node.jjtGetChild(0)).getValue();
+        if (SymbolTable.containsKey(varName)) {
+            throw new SemantiqueError(String.format("Identifier %s has multiple declarations.", varName));
+        }
+        SymbolTable.put(varName, VarType.EnumType);
         ArrayList<String> identifiersToRemove = new ArrayList<>();
         int numChildren = node.jjtGetNumChildren();
         for(int i = 1; i < numChildren; i++) {
             this.ENUM_VALUES++;
-            String varName = ((ASTIdentifier) node.jjtGetChild(i)).getValue();
-            if (SymbolTable.containsKey(varName) && SymbolTable.get(varName).equals(VarType.EnumValue)) {
+            varName = ((ASTIdentifier) node.jjtGetChild(i)).getValue();
+            if (SymbolTable.containsKey(varName)) {
                 throw new SemantiqueError(String.format("Identifier %s has multiple declarations.", varName));
             }
             SymbolTable.put(varName, VarType.EnumValue);
             identifiersToRemove.add(varName);
-        }
-        for (String identifier : identifiersToRemove) {
-            SymbolTable.remove(identifier);
         }
         return null;
     }
