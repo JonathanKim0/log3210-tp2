@@ -91,7 +91,20 @@ public class SemantiqueVisitor implements ParserVisitor {
         if (SymbolTable.containsKey(varName)) {
             throw new SemantiqueError(String.format("Identifier %s has multiple declarations.", varName));
         }
-        SymbolTable.put(varName, node.getValue().equals("num") ? VarType.Number : VarType.Bool);
+        String type = node.getValue();
+        System.out.println(String.format("type: %s, %s", type, varName));
+        if(type != null) {
+            if(type.equals("num")) {
+                SymbolTable.put(varName, VarType.Number);
+            } else if(type.equals("bool")) {
+                SymbolTable.put(varName, VarType.Bool);
+            }
+            else if(type.equals("enum")) {
+                SymbolTable.put(varName, VarType.EnumType);
+            } else {
+                throw new SemantiqueError(String.format("Identifier %s has been declared with the type %s that does not exist", varName, type));
+            }
+        }
         return null;
     }
 
@@ -161,6 +174,7 @@ public class SemantiqueVisitor implements ParserVisitor {
 
         if (node.jjtGetNumChildren() > 1) {
             node.jjtGetChild(1).jjtAccept(this, d);
+            System.out.println(d.type);
             if (d.type != SymbolTable.get(varName)) {
                 throw new SemantiqueError(String.format("Invalid type in assignation of Identifier %s", varName));
             }
@@ -171,14 +185,20 @@ public class SemantiqueVisitor implements ParserVisitor {
     @Override
     public Object visit(ASTEnumStmt node, Object data) {
         // TODO
+        ArrayList<String> identifiersToRemove = new ArrayList<>();
         int numChildren = node.jjtGetNumChildren();
         for(int i = 1; i < numChildren; i++) {
             this.ENUM_VALUES++;
-            DataStruct d = callChildenCond(node, i);
-            node.jjtGetChild(i).jjtAccept(this, d);
-            System.out.println(ENUM_VALUES);
+            String varName = ((ASTIdentifier) node.jjtGetChild(i)).getValue();
+            if (SymbolTable.containsKey(varName) && SymbolTable.get(varName).equals(VarType.EnumValue)) {
+                throw new SemantiqueError(String.format("Identifier %s has multiple declarations.", varName));
+            }
+            SymbolTable.put(varName, VarType.EnumValue);
+            identifiersToRemove.add(varName);
         }
-        ((DataStruct) data).type = VarType.EnumType;
+        for (String identifier : identifiersToRemove) {
+            SymbolTable.remove(identifier);
+        }
         return null;
     }
 
