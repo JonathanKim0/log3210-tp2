@@ -3,6 +3,7 @@ package analyzer.visitors;
 import analyzer.SemantiqueError;
 import analyzer.ast.*;
 
+import java.io.Console;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -174,6 +175,8 @@ public class SemantiqueVisitor implements ParserVisitor {
 
         if (node.jjtGetNumChildren() > 1) {
             node.jjtGetChild(1).jjtAccept(this, d);
+            System.out.println("this node: "+node.jjtGetChild(1));
+            System.out.println("this type: "+d.type);
             if (d.type != SymbolTable.get(varName)) {
                 if (!(d.type.equals(VarType.EnumValue) && SymbolTable.get(varName).equals(VarType.EnumVar) && SymbolTable.containsKey(varName))) {
                     throw new SemantiqueError(String.format("Invalid type in assignation of Identifier %s", varName));
@@ -206,12 +209,40 @@ public class SemantiqueVisitor implements ParserVisitor {
     @Override
     public Object visit(ASTSwitchStmt node, Object data) {
         // TODO
+        String varName = ((ASTIdentifier) node.jjtGetChild(0)).getValue();
+        System.out.println("switch var name: "+varName);
+        if(SymbolTable.get(varName)!=VarType.EnumVar){
+            throw new SemantiqueError(String.format("Invalid type in switch of Identifier %s", varName));
+        }
+        //node.childrenAccept(this, data);
+
+        DataStruct d = new DataStruct();
+        node.jjtGetChild(1).jjtAccept(this, d);
+        System.out.println("number of children of case: "+node.jjtGetChild(1).jjtGetNumChildren());
+        System.out.println("this test node: "+node.jjtGetChild(1));
+        System.out.println("this test node: "+node.jjtGetChild(1).jjtGetChild(0));
+        System.out.println("this test node: "+node.jjtGetChild(1).jjtGetChild(1));
+        System.out.println("this test type: "+d.type);
+
         return null;
     }
 
     @Override
     public Object visit(ASTCaseStmt node, Object data) {
         // TODO
+        System.out.println("ASTCaseStmt");
+
+        //System.out.println(node.jjtGetNumChildren() + " CHILDREN:");
+        String varName = ((ASTIdentifier) node.jjtGetChild(0)).getValue();
+        //System.out.println(varName);
+        //System.out.println(node.jjtGetChild(1));
+
+        //if(SymbolTable.get(varName)!=VarType.EnumValue){
+        //    throw new SemantiqueError(String.format("Invalid type in case of Identifier %s", varName));
+        //}
+
+        node.childrenAccept(this, data);
+
         return null;
     }
 
