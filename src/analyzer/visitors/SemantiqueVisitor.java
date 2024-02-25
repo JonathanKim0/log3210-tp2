@@ -2,6 +2,7 @@ package analyzer.visitors;
 
 import analyzer.SemantiqueError;
 import analyzer.ast.*;
+import jdk.nashorn.internal.codegen.types.Type;
 
 import java.io.Console;
 import java.io.PrintWriter;
@@ -122,7 +123,7 @@ public class SemantiqueVisitor implements ParserVisitor {
     }
 
     // Méthode qui pourrait être utile pour vérifier le type d'expression dans une condition.
-    private DataStruct callChildenCond(SimpleNode node, int i) {
+    private DataStruct callChildrenCond(Node node, int i) {
         // TODO
         DataStruct d = new DataStruct();
         node.jjtGetChild(i).jjtAccept(this, d);
@@ -136,7 +137,7 @@ public class SemantiqueVisitor implements ParserVisitor {
         // TODO
         this.IF++;
 
-        DataStruct d = callChildenCond(node, 0);
+        DataStruct d = callChildrenCond(node, 0);
 
         if (d.type != VarType.Bool) {
             throw new SemantiqueError("Invalid type in condition");
@@ -153,7 +154,7 @@ public class SemantiqueVisitor implements ParserVisitor {
     public Object visit(ASTWhileStmt node, Object data) {
         // TODO
         this.WHILE++;
-        DataStruct d = callChildenCond(node, 0);
+        DataStruct d = callChildrenCond(node, 0);
         if (d.type != VarType.Bool) {
             throw new SemantiqueError("Invalid type in condition");
         }
@@ -210,20 +211,28 @@ public class SemantiqueVisitor implements ParserVisitor {
     public Object visit(ASTSwitchStmt node, Object data) {
         // TODO
         String varName = ((ASTIdentifier) node.jjtGetChild(0)).getValue();
-        System.out.println("switch var name: "+varName);
-        if(SymbolTable.get(varName)!=VarType.EnumVar){
+        if(SymbolTable.get(varName)!=VarType.EnumVar && SymbolTable.get(varName)!=VarType.Number && SymbolTable.get(varName)!=VarType.Bool){
             throw new SemantiqueError(String.format("Invalid type in switch of Identifier %s", varName));
         }
-        //node.childrenAccept(this, data);
 
-        DataStruct d = new DataStruct();
-        node.jjtGetChild(1).jjtAccept(this, d);
-        System.out.println("number of children of case: "+node.jjtGetChild(1).jjtGetNumChildren());
-        System.out.println("this test node: "+node.jjtGetChild(1));
-        System.out.println("this test node: "+node.jjtGetChild(1).jjtGetChild(0));
-        System.out.println("this test node: "+node.jjtGetChild(1).jjtGetChild(1));
-        System.out.println("this test type: "+d.type);
+        int numChildren = node.jjtGetNumChildren();
+        VarType typeFirst = null;
+        VarType type = null;
+        for(int i = 1; i < numChildren; i++) {
+            DataStruct d = callChildrenCond(node.jjtGetChild(i), 0);
+            System.out.println("===" + typeFirst);
+            type = d.type != null ? d.type : VarType.EnumValue;
+            if(typeFirst == null) {
+                typeFirst = d.type;
+            } else if(typeFirst != type) {
+                throw new SemantiqueError(String.format("Invalid type in switch of Identifier %s", varName));
+            }
+        }
 
+        for (int i = 1; i < numChildren; i++) {
+            ASTCaseStmt n = (ASTCaseStmt) node.jjtGetChild(i);
+            n.jjtAccept(this, data);
+        }
         return null;
     }
 
@@ -231,17 +240,19 @@ public class SemantiqueVisitor implements ParserVisitor {
     public Object visit(ASTCaseStmt node, Object data) {
         // TODO
         System.out.println("ASTCaseStmt");
+        DataStruct d = callChildrenCond(node, 0);
+        String parent = ((ASTIdentifier) node.jjtGetParent().jjtGetChild(0)).getValue();
 
-        //System.out.println(node.jjtGetNumChildren() + " CHILDREN:");
-        String varName = ((ASTIdentifier) node.jjtGetChild(0)).getValue();
-        //System.out.println(varName);
-        //System.out.println(node.jjtGetChild(1));
-
-        //if(SymbolTable.get(varName)!=VarType.EnumValue){
-        //    throw new SemantiqueError(String.format("Invalid type in case of Identifier %s", varName));
-        //}
-
+        if(node.jjtGetChild(0) instanceof ASTIdentifier && SymbolTable.get(parent) == VarType.EnumVar) {
+            String var = ((ASTIdentifier) node.jjtGetChild(0)).getValue();
+            if(SymbolTable.get(var)!=VarType.EnumValue) {
+                throw new SemantiqueError(String.format("Invalid type in case of Identifier %s", var));
+            }
+        }
         node.childrenAccept(this, data);
+
+        System.out.println(SymbolTable.get(parent));
+        System.out.println(d.type);
 
         return null;
     }
@@ -273,7 +284,7 @@ public class SemantiqueVisitor implements ParserVisitor {
             this.OP++;
         }
         for (int i = 0; i < numChildren; i++) {
-            DataStruct d = callChildenCond(node, i);
+            DataStruct d = callChildrenCond(node, i);
             if (numChildren == 1) {
                 ((DataStruct) data).type = d.type;
             } else {
@@ -310,7 +321,7 @@ public class SemantiqueVisitor implements ParserVisitor {
             this.OP++;
         }
         for (int i = 0; i < numChildren; i++) {
-            DataStruct d = callChildenCond(node, i);
+            DataStruct d = callChildrenCond(node, i);
 
             if(numChildren > 1 && d.type != VarType.Number) {
                 throw new SemantiqueError("Invalid type in expression");
@@ -332,7 +343,7 @@ public class SemantiqueVisitor implements ParserVisitor {
             this.OP++;
         }
         for (int i = 0; i < numChildren; i++) {
-            DataStruct d = callChildenCond(node, i);
+            DataStruct d = callChildrenCond(node, i);
             if (numChildren > 1 && d.type != VarType.Number) {
                 throw new SemantiqueError("Invalid type in expression");
             }
@@ -354,7 +365,7 @@ public class SemantiqueVisitor implements ParserVisitor {
             this.OP++;
         }
         for (int i = 0; i < numChildren; i++) {
-            DataStruct d = callChildenCond(node, i);
+            DataStruct d = callChildrenCond(node, i);
             if (numChildren == 1) {
                 ((DataStruct)data).type = d.type;
             }
