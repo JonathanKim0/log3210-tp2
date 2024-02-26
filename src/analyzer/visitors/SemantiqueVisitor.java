@@ -2,6 +2,7 @@ package analyzer.visitors;
 
 import analyzer.SemantiqueError;
 import analyzer.ast.*;
+import com.sun.org.apache.xpath.internal.operations.Bool;
 import jdk.nashorn.internal.codegen.types.Type;
 
 import java.io.Console;
@@ -211,22 +212,33 @@ public class SemantiqueVisitor implements ParserVisitor {
     public Object visit(ASTSwitchStmt node, Object data) {
         // TODO
         String varName = ((ASTIdentifier) node.jjtGetChild(0)).getValue();
-        if(SymbolTable.get(varName)!=VarType.EnumVar && SymbolTable.get(varName)!=VarType.Number && SymbolTable.get(varName)!=VarType.Bool){
+        if(SymbolTable.get(varName)!=VarType.EnumVar && SymbolTable.get(varName)!=VarType.Number && SymbolTable.get(varName)!=VarType.Bool){ //check if var,number,bool
             throw new SemantiqueError(String.format("Invalid type in switch of Identifier %s", varName));
         }
 
         int numChildren = node.jjtGetNumChildren();
-        VarType typeFirst = null;
-        VarType type = null;
-        for(int i = 1; i < numChildren; i++) {
+        DataStruct pastNode = callChildrenCond(node.jjtGetChild(1), 0);
+        HashMap<VarType, String> printTypes = new HashMap() {{
+            put(null, "Identifier");
+            put(VarType.Number, "integer");
+            put(VarType.Bool, "boolean");
+        }};
+        //VarType type = null;
+        for(int i = 2; i < numChildren; i++) {
             DataStruct d = callChildrenCond(node.jjtGetChild(i), 0);
-            System.out.println("===" + typeFirst);
-            type = d.type != null ? d.type : VarType.EnumValue;
-            if(typeFirst == null) {
-                typeFirst = d.type;
-            } else if(typeFirst != type) {
-                throw new SemantiqueError(String.format("Invalid type in switch of Identifier %s", varName));
+            //Node caseVarName = node.jjtGetChild(i).jjtGetChild(0);
+            System.out.println("past type " + pastNode.type);
+            System.out.println("current type " + d.type);
+            if(pastNode.type != d.type){
+                throw new SemantiqueError(String.format("Invalid type in case of %s %s", printTypes.get(d.type), "hi"));
             }
+
+
+            pastNode = callChildrenCond(node.jjtGetChild(1), 0);
+        }
+
+        if(SymbolTable.get(varName) != (pastNode.type==null?VarType.EnumVar:pastNode.type)){
+            throw new SemantiqueError(String.format("Invalid type in switch of Identifier %s", varName));
         }
 
         for (int i = 1; i < numChildren; i++) {
@@ -240,7 +252,7 @@ public class SemantiqueVisitor implements ParserVisitor {
     public Object visit(ASTCaseStmt node, Object data) {
         // TODO
         System.out.println("ASTCaseStmt");
-        DataStruct d = callChildrenCond(node, 0);
+        //DataStruct d = callChildrenCond(node, 0);
         String parent = ((ASTIdentifier) node.jjtGetParent().jjtGetChild(0)).getValue();
 
         if(node.jjtGetChild(0) instanceof ASTIdentifier && SymbolTable.get(parent) == VarType.EnumVar) {
@@ -251,8 +263,8 @@ public class SemantiqueVisitor implements ParserVisitor {
         }
         node.childrenAccept(this, data);
 
-        System.out.println(SymbolTable.get(parent));
-        System.out.println(d.type);
+        //System.out.println(SymbolTable.get(parent));
+        //System.out.println(d.type);
 
         return null;
     }
