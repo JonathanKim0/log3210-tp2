@@ -217,27 +217,33 @@ public class SemantiqueVisitor implements ParserVisitor {
         }
 
         int numChildren = node.jjtGetNumChildren();
-        DataStruct pastNode = callChildrenCond(node.jjtGetChild(1), 0);
+        DataStruct pastData = callChildrenCond(node.jjtGetChild(1), 0);
+        Node pastNode = node.jjtGetChild(1);
         HashMap<VarType, String> printTypes = new HashMap() {{
             put(null, "Identifier");
             put(VarType.Number, "integer");
             put(VarType.Bool, "boolean");
         }};
-        //VarType type = null;
+
         for(int i = 2; i < numChildren; i++) {
             DataStruct d = callChildrenCond(node.jjtGetChild(i), 0);
-            //Node caseVarName = node.jjtGetChild(i).jjtGetChild(0);
-            System.out.println("past type " + pastNode.type);
-            System.out.println("current type " + d.type);
-            if(pastNode.type != d.type){
-                throw new SemantiqueError(String.format("Invalid type in case of %s %s", printTypes.get(d.type), "hi"));
+            VarType pastType = pastData.type != null ? pastData.type : SymbolTable.get(((ASTIdentifier) pastNode.jjtGetChild(0)).getValue());
+            VarType type = d.type != null ? d.type : SymbolTable.get(((ASTIdentifier) node.jjtGetChild(i).jjtGetChild(0)).getValue());
+            System.out.println(type + "-" + pastType);
+            if(pastType != type){
+                System.out.println(type + "-" + pastType);
+                if(type == VarType.Number) {
+                    throw new SemantiqueError(String.format("Invalid type in case of %s %s", printTypes.get(d.type), ((ASTIntValue)node.jjtGetChild(i).jjtGetChild(0)).getValue()));
+                } else if (type == VarType.Bool) {
+                    throw new SemantiqueError(String.format("Invalid type in case of %s %s", printTypes.get(d.type), ((ASTBoolValue)node.jjtGetChild(i).jjtGetChild(0)).getValue()));
+                } else if (pastNode.jjtGetChild(0) instanceof ASTIdentifier) {
+                    throw new SemantiqueError(String.format("Invalid type in case of %s %s", printTypes.get(d.type), ((ASTIdentifier)pastNode.jjtGetChild(0)).getValue()));
+                }
             }
 
-
-            pastNode = callChildrenCond(node.jjtGetChild(1), 0);
+            pastData = callChildrenCond(node.jjtGetChild(1), 0);
         }
-
-        if(SymbolTable.get(varName) != (pastNode.type==null?VarType.EnumVar:pastNode.type)){
+        if(SymbolTable.get(varName) != (pastData.type==null?VarType.EnumVar:pastData.type)){
             throw new SemantiqueError(String.format("Invalid type in switch of Identifier %s", varName));
         }
 
@@ -252,19 +258,20 @@ public class SemantiqueVisitor implements ParserVisitor {
     public Object visit(ASTCaseStmt node, Object data) {
         // TODO
         System.out.println("ASTCaseStmt");
-        //DataStruct d = callChildrenCond(node, 0);
+
         String parent = ((ASTIdentifier) node.jjtGetParent().jjtGetChild(0)).getValue();
 
-        if(node.jjtGetChild(0) instanceof ASTIdentifier && SymbolTable.get(parent) == VarType.EnumVar) {
+        if(node.jjtGetChild(0) instanceof ASTIdentifier) {
             String var = ((ASTIdentifier) node.jjtGetChild(0)).getValue();
-            if(SymbolTable.get(var)!=VarType.EnumValue) {
+            if(SymbolTable.get(parent) == VarType.EnumVar) {
+                if(SymbolTable.get(var) != VarType.EnumValue) {
+                    throw new SemantiqueError(String.format("Invalid type in case of Identifier %s", var));
+                }
+            } else if(SymbolTable.get(var) != SymbolTable.get(parent)) {
                 throw new SemantiqueError(String.format("Invalid type in case of Identifier %s", var));
             }
         }
-        node.childrenAccept(this, data);
-
-        //System.out.println(SymbolTable.get(parent));
-        //System.out.println(d.type);
+        node.jjtGetChild(1).jjtAccept(this, data);
 
         return null;
     }
