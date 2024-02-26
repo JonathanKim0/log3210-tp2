@@ -229,9 +229,7 @@ public class SemantiqueVisitor implements ParserVisitor {
             DataStruct d = callChildrenCond(node.jjtGetChild(i), 0);
             VarType pastType = pastData.type != null ? pastData.type : SymbolTable.get(((ASTIdentifier) pastNode.jjtGetChild(0)).getValue());
             VarType type = d.type != null ? d.type : SymbolTable.get(((ASTIdentifier) node.jjtGetChild(i).jjtGetChild(0)).getValue());
-            System.out.println(type + "-" + pastType);
             if(pastType != type){
-                System.out.println(type + "-" + pastType);
                 if(type == VarType.Number) {
                     throw new SemantiqueError(String.format("Invalid type in case of %s %s", printTypes.get(d.type), ((ASTIntValue)node.jjtGetChild(i).jjtGetChild(0)).getValue()));
                 } else if (type == VarType.Bool) {
@@ -240,7 +238,6 @@ public class SemantiqueVisitor implements ParserVisitor {
                     throw new SemantiqueError(String.format("Invalid type in case of %s %s", printTypes.get(d.type), ((ASTIdentifier)pastNode.jjtGetChild(0)).getValue()));
                 }
             }
-
             pastData = callChildrenCond(node.jjtGetChild(1), 0);
         }
         if(SymbolTable.get(varName) != (pastData.type==null?VarType.EnumVar:pastData.type)){
